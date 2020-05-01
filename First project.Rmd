@@ -1,0 +1,153 @@
+
+By : Khan Akbar 
+
+
+Title: Project 1: Exploring Weather Trends  
+Author: khan akbar 
+Date: 01-05-2020 
+Output: project-1.pdf  
+
+
+## Outline
+* Extract the data
+* Open up the CSV
+* Create a line chart
+* Make four observations
+
+
+### Extract the data
+- city list  
+    SELECT *  
+    FROM city_list  
+    ORDER BY country, city  
+
+- city data  
+    SELECT *  
+    FROM city_data  
+    WHERE city IN ('San Jose', 'Los Angeles','San Francisco') AND country = 'United States'  
+
+- global data  
+    SELECT *  
+    FROM global_data    
+
+
+
+Data import the data in R Studio 
+```{r message=TRUE, warning=TRUE, paged.print=TRUE}
+## 1) Reading datasets
+library(readr)
+library(dplyr)
+
+# a. Global 
+global <- read_csv("C:/Users/khana/OneDrive/Desktop/UDACITY project/Udacity-DAND-Weather-Trends-master (1)/Udacity-DAND-Weather-Trends-master/data/global.csv")
+
+# Make the time period the same like San Jose and Los Angeles
+global2 <- global %>%
+  filter(year >= 1849 & year <= 2013)
+
+# b. My current Location: San Jose
+cities <- read_csv("C:/Users/khana/OneDrive/Desktop/UDACITY project/Udacity-DAND-Weather-Trends-master (1)/Udacity-DAND-Weather-Trends-master/data/cities.csv")
+sj <- cities %>%
+  filter(city == 'San Jose') %>%
+  select(year,avg_temp)
+
+# c. The city I stayed before the Bay: Los Angeles
+la <- cities %>%
+  filter(city == 'Los Angeles') %>%
+  select(year,avg_temp)
+
+# d. My hometown: Taipei
+tpi <- read_csv("C:/Users/khana/OneDrive/Desktop/UDACITY project/Udacity-DAND-Weather-Trends-master (1)/Udacity-DAND-Weather-Trends-master/data/tpi.csv") %>%
+  filter(year >= 1849 & year <= 2013) %>%
+  select(year,avg_temp)
+
+```
+
+
+
+Calculating moving average
+```{r}
+##################################### 2) Create a function for calculating moving average ###############################3
+move <- function(data,loc,y){
+    mov_year = data.frame()
+    locat = data.frame()
+    year = data.frame()
+    movavg = data.frame()
+    for(i in 1:length(data$avg_temp)){
+        if (i < y){
+            x <- NA
+            z <- NA
+        }
+            else{
+                x <- data %>%
+                summarize(movmean = mean(avg_temp[(i-(y-1)):i]))
+                z <- paste(y,'year_moving_avg')
+                }
+        movavg = rbind(movavg,data.frame(as.numeric(x)))
+        year = rbind(year,z)
+        locat = rbind(locat,loc)
+    }
+    names(locat) <- 'location'
+    names(movavg) <- 'mov_avg'
+    names(year) = 'temp_moving_avg'
+    mov_year <- cbind(data,movavg,year,locat)
+    return(mov_year)
+}
+
+globalall <- rbind(move(global2,'Global',3),move(global2,'Global',5),move(global2,'Global',7),move(global2,'Global',10))
+
+library(ggplot2)
+ggplot(data=globalall, aes(x=year, y=mov_avg, color=temp_moving_avg))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("Compare among different temperature moving average")
+```
+
+
+Removing 1st to 6th year (NAs) 
+```{r}
+# Remove the missing value and data prepreation by remob=ving  NAs
+global7 <- move(global2,'Global',7) %>%
+    filter(year >= 1855)
+head(global7)
+
+sj7 <- move(sj,'San Jose',7) %>%
+  filter(year >= 1855)
+head(sj7)
+
+glo_sj <- rbind(global7,sj7)
+
+la7 <- move(la,'Los Angeles',7) %>%
+  filter(year >= 1855)
+head(la7)
+
+tpi7 <- move(tpi,'Taipei',7) %>% 
+  filter(year >= 1855)
+head(tpi7)
+
+glob_city <- rbind(global7,sj7,la7,tpi7)
+```
+
+
+Compare weather trends in global and cities 
+```{r}
+## 3) Data Visualization
+library(ggplot2)
+
+ggplot(data=global7, aes(x=year, y=mov_avg, color=temp_moving_avg))+geom_line()+
+    ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature in Global")
+
+ggplot(data=sj7, aes(x=year, y=mov_avg, color=temp_moving_avg))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature in San Jose")
+
+ggplot(data=glo_sj, aes(x=year, y=mov_avg, color=location))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature Global V.S. San Jose")
+
+ggplot(data=la7, aes(x=year, y=mov_avg, color=temp_moving_avg))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature in Los Angeles")
+
+ggplot(data=tpi7, aes(x=year, y=mov_avg, color=temp_moving_avg))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature in Taipei")
+
+ggplot(data=glob_city, aes(x=year, y=mov_avg, color=location))+geom_line()+
+  ylab("Average Temperature")+theme_bw()+ggtitle("7 year Moving Average Temperature")
+```
+
